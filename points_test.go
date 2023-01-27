@@ -29,17 +29,17 @@ import (
 )
 
 func TestPoints(t *testing.T) {
-	p1, p2 := math3d.Point{0, 0, 0}, math3d.Point{1, 1, 1}
+	p1 := math3d.Point{X: 0, Y: 0, Z: 0}
 
-	dx, dy, dz := p1.DeltaXYZ(p2)
+	dx, dy, dz := p1.DeltaXYZ(math3d.Point{X: 1, Y: 1, Z: 1})
 	if dx != 1.0 {
-		t.Errorf("DeltaXYZ: x: wanted %f, got %f\n", 1.0, dx)
+		t.Errorf("DeltaXYZ: x: want %f, got %f\n", 1.0, dx)
 	}
 	if dy != 1.0 {
-		t.Errorf("DeltaXYZ: y: wanted %f, got %f\n", 1.0, dy)
+		t.Errorf("DeltaXYZ: y: want %f, got %f\n", 1.0, dy)
 	}
 	if dz != 1.0 {
-		t.Errorf("DeltaXYZ: z: wanted %f, got %f\n", 1.0, dz)
+		t.Errorf("DeltaXYZ: z: want %f, got %f\n", 1.0, dz)
 	}
 
 	for _, tt := range []struct {
@@ -47,13 +47,13 @@ func TestPoints(t *testing.T) {
 		expect float64
 	}{
 		{p1, 0},
-		{math3d.Point{1, 0, 0}, 1},
-		{math3d.Point{0, 1, 0}, 1},
-		{math3d.Point{0, 0, 1}, 1},
+		{math3d.Point{X: 1, Y: 0, Z: 0}, 1},
+		{math3d.Point{X: 0, Y: 1, Z: 0}, 1},
+		{math3d.Point{X: 0, Y: 0, Z: 1}, 1},
 	} {
 		d := p1.Distance(tt.p)
 		if d != tt.expect {
-			t.Errorf("Distance: z: wanted %f, got %f\n", tt.expect, d)
+			t.Errorf("Distance: z: want %f, got %f\n", tt.expect, d)
 		}
 	}
 }
