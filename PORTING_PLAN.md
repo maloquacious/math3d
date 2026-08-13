@@ -2,7 +2,7 @@
 
 ## Goal
 
-Port the public behavior of [`vimaec/math3d`](https://github.com/vimaec/math3d) to a dependency-free Go package, preserving its float precision and geometric conventions while making its data model immutable from outside the package.
+Port the public behavior of [`vimaec/math3d`](https://github.com/vimaec/math3d) to a dependency-free Go package, preserving its float precision and geometric conventions while exposing ordinary Go value structs with public fields.
 
 The first milestone is deliberately structural: define, document, and test the value types before porting the larger algorithms.
 
@@ -11,39 +11,40 @@ The first milestone is deliberately structural: define, document, and test the v
 These are the proposed defaults. Record them in package documentation before implementation so later ports do not accidentally change conventions.
 
 1. **Preserve source precision.** The primary types use `float32`; `D`-prefixed types use `float64`. Do not replace the primary API with `float64` or expose generic numeric types. This preserves source behavior, data size, and straightforward test translation.
-2. **Use immutable value types.** Store components in unexported fields, expose constructors and accessors, and give operations value receivers that return new values. Do not expose pointers from values or mutating methods.
+2. **Do not modify value types internally.** Fields are public, so callers may construct and modify their own values directly. The package promises that its operations will not mutate value arguments or receiver values; methods use value receivers and return results as new values.
 3. **Make zero values safe where possible, not necessarily meaningful.** Zero vectors and scalar intervals are valid. A zero quaternion, ray, plane, sphere, transform, or box may not meet an algorithm's preconditions; document those cases rather than hiding them with implicit initialization.
 4. **Preserve row-vector matrix semantics.** Points transform as `[x y z 1] * M`, normals as `[x y z 0] * M`, and translation occupies `M41`, `M42`, `M43`. Composition order must match the source.
 5. **Prefer normal Go result forms.** Use `(value, ok)` for intersections, normalization of zero-length values, matrix inversion, and other operations that can legitimately fail. Reserve errors for malformed external input, not ordinary geometric misses.
 6. **Do not reproduce C#-shaped interfaces.** Add small interfaces only when a Go algorithm has multiple real implementations. Use concrete methods for vectors and shapes.
-7. **Do not serialize raw struct memory.** Supply explicit binary encoding in documented component order and endianness if binary compatibility is required. Private representation remains free to change.
+7. **Do not serialize raw struct memory.** Supply explicit binary encoding in documented component order and endianness if binary compatibility is required. Public field layout is part of the Go API, but padding and native endianness are not a wire format.
 8. **Pin the source revision.** Before implementation, record the exact upstream commit in `UPSTREAM.md`. The repository is a mirror and its `dev` branch can change.
 
-## Immutable representation
+## Public value representation
 
-Go has no `readonly struct`. Exported fields would undermine the stated immutability goal, so components should be private:
+Use exported fields so values work naturally with struct literals and direct field access:
 
 ```go
 type Vec3 struct {
-	x, y, z float32
+	X, Y, Z float32
 }
 
-func V3(x, y, z float32) Vec3 { return Vec3{x: x, y: y, z: z} }
-func (v Vec3) X() float32      { return v.x }
-func (v Vec3) Y() float32      { return v.y }
-func (v Vec3) Z() float32      { return v.z }
-func (v Vec3) WithX(x float32) Vec3 { return V3(x, v.y, v.z) }
+func V3(x, y, z float32) Vec3 { return Vec3{X: x, Y: y, Z: z} }
+
+func (v Vec3) Add(other Vec3) Vec3 {
+	return V3(v.X+other.X, v.Y+other.Y, v.Z+other.Z)
+}
 ```
 
 Consequences:
 
-- Assignment and method calls copy values; callers cannot mutate package-owned state.
+- Callers may mutate fields on values they own. The package's promise is narrower: package operations do not modify received value types internally.
+- Methods use value receivers and return new values. Functions do not accept pointers merely to mutate mathematical inputs.
 - Types containing only comparable fields remain usable as map keys and with `==`.
 - Package-level vector and matrix variables must be avoided because callers can reassign them. Use scalar constants and value-returning functions such as `IdentityQuat()` and `IdentityMat4()`.
-- JSON, text, and binary support needs explicit marshal methods because fields are private.
-- Algorithms inside the package may construct values directly, but public checked constructors should distinguish preconditions from raw representation.
+- Exported fields support standard JSON encoding naturally. Text and binary formats still need explicit contracts.
+- Constructors remain useful for concise creation and validation, but callers may also use struct literals. Checked constructors should distinguish preconditions from raw representation.
 
-`Mat4` should use a private `[16]float32` in source flattening order rather than sixteen mutable public fields. Expose `At(row, col)`, `Row`, `Column`, and semantic constructors. The array keeps `Mat4` comparable and contiguous without making raw in-memory serialization part of the API.
+`Mat4` should expose sixteen `float32` fields named `M11` through `M44`, matching the source and making matrix literals readable. Also provide `At(row, col)`, `Row`, `Column`, and semantic constructors. Keep explicit encoding separate from raw in-memory layout.
 
 ## Public type map
 
@@ -57,7 +58,7 @@ Use concise Go names for common mathematical types while documenting the upstrea
 | `Byte2/3/4` | `Byte2`, `Byte3`, `Byte4` | `byte` components |
 | `Complex` | `Complex` | two `float64` components; evaluate interoperability with built-in `complex128` |
 | `Quaternion`, `DQuaternion` | `Quat`, `DQuat` | four components |
-| `Matrix4x4` | `Mat4` | private `[16]float32` |
+| `Matrix4x4` | `Mat4` | sixteen exported `float32` fields |
 | `Transform` | `Transform` | `Vec3` position and `Quat` orientation |
 | `Plane`, `DPlane` | `Plane`, `DPlane` | normal and scalar offset |
 | `Interval`, `DInterval` | `Interval`, `DInterval` | min and max |
@@ -71,7 +72,7 @@ Use concise Go names for common mathematical types while documenting the upstrea
 | color records | `RGB`, `RGBA`, `HDRColor` | matching byte/float fields |
 | coordinate records | names without `Coordinate`, e.g. `Spherical`, `Geo` | source `float64` fields |
 | `AxisAngle`, `Euler`, `HorizontalCoordinate` | `AxisAngle`, `Euler`, `Horizontal` | matching source precision |
-| `Stats<T>` | `Stats[T]` | immutable count/min/max/sum snapshot |
+| `Stats<T>` | `Stats[T]` | public count/min/max/sum fields |
 | `ValueDomain` | `Domain` | two `float64` bounds |
 
 Before freezing the API, create a short naming prototype and run `golint`-equivalent documentation checks plus a small consumer example. If source-name familiarity is more important to intended users, retain `Vector3`, `Matrix4`, and `Quaternion`; do not provide aliases for both naming schemes because that doubles the apparent API.
@@ -83,7 +84,7 @@ The current README's `LinearMotion`, `AngularMotion`, `Motion`, `Triangle2`, and
 ### 1. Establish the module and parity ledger
 
 - Create `go.mod` after the module import path is known.
-- Add package documentation containing handedness, row-vector convention, angle units, precision policy, tolerance policy, and immutability guarantees.
+- Add package documentation containing handedness, row-vector convention, angle units, precision policy, tolerance policy, and the promise not to mutate value arguments internally.
 - Add `UPSTREAM.md` with the pinned commit, source file inventory, source-to-Go symbol map, and intentional deviations.
 - Use one package initially. Split packages only if an actual import boundary emerges; these types are highly interconnected.
 
@@ -97,13 +98,13 @@ The current README's `LinearMotion`, `AngularMotion`, `Motion`, `Triangle2`, and
 - Add exact equality naturally through comparable values; add `AlmostEqual` only to floating-point types.
 - Decide how NaN affects equality, ordering, hashing/map-key use, and approximate comparisons. Match Go's normal IEEE behavior unless source tests require otherwise.
 
-**Exit criteria:** constructors/accessors/`With…` methods and table-driven tests exist for every simple record; `go vet ./...` is clean.
+**Exit criteria:** public fields, useful constructors, and table-driven tests exist for every simple record; `go vet ./...` is clean.
 
 ### 3. Define vector values
 
 - Implement `Vec2/3/4` and `DVec2/3/4` manually first.
 - Provide named constructors (`V2`, `V3`, `V4`) and splat constructors only where useful.
-- Port component access, `WithX`-style replacement, arithmetic methods, dot product, magnitude, component reductions, min/max, finite/NaN checks, and approximate equality.
+- Port arithmetic methods, dot product, magnitude, component reductions, min/max, finite/NaN checks, and approximate equality. Direct field assignment replaces generated `WithX`-style methods unless a replacement method proves useful in chained expressions.
 - Use `Normalized() (VecN, bool)`; do not let zero normalization silently create NaNs.
 - Keep component-wise multiplication and scalar multiplication visibly distinct (`Mul` and `Scale`).
 - Add precision conversions explicitly (`Vec3.DVec3()` or a clearly documented constructor), never implicitly.
@@ -112,7 +113,7 @@ The current README's `LinearMotion`, `AngularMotion`, `Motion`, `Triangle2`, and
 
 ### 4. Define compound geometry records without algorithms
 
-Define immutable storage, constructors, accessors, replacement methods, equality, and documented invariants for:
+Define public fields, useful constructors, equality behavior, non-mutating operations, and documented invariants for:
 
 - `Quat`, `DQuat`, `AxisAngle`, and `Euler`
 - `Mat4`
@@ -129,7 +130,7 @@ Use two constructor levels only when they have distinct semantics:
 
 Do not silently normalize quaternions, ray directions, plane normals, or box endpoint order in direct constructors. Such normalization changes values and can conceal mistakes.
 
-**Exit criteria:** every value is externally immutable and comparable; all invariants and zero-value behavior are documented; representation tests cover component order and sizes of explicit encodings.
+**Exit criteria:** every value has public fields and package operations leave inputs unchanged; comparable types remain comparable; all invariants and zero-value behavior are documented; representation tests cover component order and sizes of explicit encodings.
 
 ## Algorithm milestones
 
@@ -163,12 +164,12 @@ Do not silently normalize quaternions, ray directions, plane normals, or box end
 - Port segment mapping and 2D segment intersection.
 - Port triangle area, normal, degeneracy/sliver checks, bounds, and ray intersection.
 - Port quad mapping and transforms.
-- Use slices only at algorithm boundaries; never retain caller-owned slices inside immutable values.
+- Use slices only at algorithm boundaries; do not retain caller-owned slices inside value types.
 
 ### 9. Remaining scalar/vector math and conversions
 
 - Port source helpers that are demonstrably used or publicly valuable.
-- Port immutable `Stats[T]` and `Domain` values, then the stateless random and hashing helpers where they remain useful in Go. Use the standard library instead of copying LINQ-specific utilities.
+- Port `Stats[T]` and `Domain` values with public fields, then the stateless random and hashing helpers where they remain useful in Go. Use the standard library instead of copying LINQ-specific utilities.
 - Prefer package functions for operations with no natural receiver and methods for operations centered on one value.
 - Correct the misleading upstream unit-conversion comments/names and test numerical direction (`mm → ft`, `ft → mm`).
 - Avoid mechanically recreating every C# extension method when Go's `math` package is clearer.
@@ -206,7 +207,7 @@ Each slice should be independently reviewable and leave the package passing test
 1. Module/package documentation, upstream pin, constants, enums, byte/color/integer/coordinate records.
 2. `Vec2/3/4` and tests.
 3. `DVec2/3/4`, precision conversions, and tests.
-4. Immutable compound record definitions, invariant documentation, and representation tests.
+4. Public-field compound record definitions, invariant documentation, and representation tests.
 5. Quaternion operations.
 6. Matrix operations and vector transforms.
 7. Plane and rigid transform behavior.
@@ -214,4 +215,4 @@ Each slice should be independently reviewable and leave the package passing test
 9. Rays and spheres.
 10. Segments, triangles, quads, remaining conversions, encoding, and examples.
 
-The API should not be declared stable until slice 6 proves that the immutable vector, quaternion, and matrix representations work ergonomically together in real transform code.
+The API should not be declared stable until slice 6 proves that the public-field vector, quaternion, and matrix representations work ergonomically together in real transform code without package operations mutating their inputs.
