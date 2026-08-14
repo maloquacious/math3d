@@ -308,7 +308,8 @@ func Mat4FromYawPitchRoll(yaw, pitch, roll float32) Mat4 {
 	return Mat4FromQuat(QuatFromYawPitchRoll(yaw, pitch, roll))
 }
 
-// Mat4FromQuat creates the row-vector rotation matrix represented by q.
+// Mat4FromQuat creates the row-vector matrix represented by q. The quaternion
+// must have unit length for the matrix to be a pure rotation.
 func Mat4FromQuat(q Quat) Mat4 {
 	xx, yy, zz := q.X*q.X, q.Y*q.Y, q.Z*q.Z
 	xy, xz, yz := q.X*q.Y, q.X*q.Z, q.Y*q.Z
@@ -476,11 +477,16 @@ func WorldMat4(position, forward, up Vec3) (Mat4, bool) {
 }
 
 // ComposeMat4 creates scale, then rotation, then translation for row vectors.
+// Rotation must be a unit quaternion for the linear part to contain only the
+// supplied scale and rotation.
 func ComposeMat4(scale Vec3, rotation Quat, translation Vec3) Mat4 {
 	return ScaleMat4(scale).Mul(Mat4FromQuat(rotation)).Mul(TranslationMat4(translation))
 }
 
-// Decompose extracts scale, rotation, and translation from an affine SRT matrix.
+// Decompose extracts scale, rotation, and translation from an affine SRT
+// matrix. It returns false when the linear part is non-finite or cannot be
+// represented as scale followed by an orthonormal rotation within its fixed
+// tolerance, as with shear.
 func (m Mat4) Decompose() (scale Vec3, rotation Quat, translation Vec3, ok bool) {
 	rows := [3]Vec3{V3(m.M11, m.M12, m.M13), V3(m.M21, m.M22, m.M23), V3(m.M31, m.M32, m.M33)}
 	scales := [3]float32{float32(rows[0].Magnitude()), float32(rows[1].Magnitude()), float32(rows[2].Magnitude())}

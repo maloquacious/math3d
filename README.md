@@ -95,6 +95,8 @@ executable [`ExampleTransform`](example_test.go).
 
 - [Place and query a 3D object](docs/getting-started.md) — a guided first
   workflow using a rigid transform, world-space bounds, and a ray query
+- [Transform points, directions, and rotations](docs/transforms.md) — choose
+  rigid or general transforms and apply matrix and quaternion ordering correctly
 
 ## API documentation
 

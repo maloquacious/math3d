@@ -89,6 +89,46 @@ func ExampleMat4_Mul() {
 	// 5 1 0
 }
 
+func ExampleConcatenate() {
+	first := math3d.QuatRotationZ(math3d.HalfPi)
+	second := math3d.QuatRotationX(math3d.HalfPi)
+	rotation := math3d.Concatenate(first, second)
+	result := rotation.Rotate(math3d.V3(1, 0, 0))
+
+	fmt.Printf("%.0f %.0f %.0f\n", result.X, result.Y, result.Z)
+	// Output:
+	// 0 0 1
+}
+
+func ExampleMat4_TransformNormal() {
+	matrix := math3d.ComposeMat4(
+		math3d.V3(2, 1, 1),
+		math3d.IdentityQuat(),
+		math3d.V3(10, 0, 0),
+	)
+
+	point := matrix.TransformPoint(math3d.V3(1, 0, 0))
+	direction := matrix.TransformDirection(math3d.V3(1, 0, 0))
+	normal, ok := matrix.TransformNormal(math3d.V3(1, 0, 0))
+	if !ok {
+		return
+	}
+	unitNormal, ok := normal.Normalized()
+	if !ok {
+		return
+	}
+
+	fmt.Printf("point: %.1f %.1f %.1f\n", point.X, point.Y, point.Z)
+	fmt.Printf("direction: %.1f %.1f %.1f\n", direction.X, direction.Y, direction.Z)
+	fmt.Printf("normal: %.1f %.1f %.1f\n", normal.X, normal.Y, normal.Z)
+	fmt.Printf("unit normal: %.1f %.1f %.1f\n", unitNormal.X, unitNormal.Y, unitNormal.Z)
+	// Output:
+	// point: 12.0 0.0 0.0
+	// direction: 2.0 0.0 0.0
+	// normal: 0.5 0.0 0.0
+	// unit normal: 1.0 0.0 0.0
+}
+
 func ExampleMat4_RayFromNormalizedScreen() {
 	projection, ok := math3d.PerspectiveFOVMat4(math3d.HalfPi, 1, 1, 10)
 	if !ok {

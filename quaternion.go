@@ -99,7 +99,8 @@ func (q Quat) Div(other Quat) (Quat, bool) {
 	return q.Mul(inverse), true
 }
 
-// Concatenate returns the rotation first followed by second.
+// Concatenate returns the rotation first followed by second. Both inputs must
+// be unit quaternions when they represent rotations.
 func Concatenate(first, second Quat) Quat { return second.Mul(first) }
 
 // QuatFromAxisAngle creates a quaternion for an angle in radians. Axis must be unit length.
