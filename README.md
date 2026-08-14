@@ -101,6 +101,8 @@ executable [`ExampleTransform`](example_test.go).
   world-space screen rays and interpret shape-specific intersection results
 - [Choose precision and validate representations](docs/precision-and-validity.md)
   — select the available float32 or float64 families and handle zero values
+- [Work with bounds and shapes](docs/bounds-and-shapes.md) — build and combine
+  bounds, evaluate shape parameters, and use triangle and plane conventions
 
 ## API documentation
 

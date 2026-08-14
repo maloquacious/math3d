@@ -153,18 +153,35 @@ func (b Box3) AlmostEqual(other Box3, tolerance float32) bool {
 	return b.Min.AlmostEqual(other.Min, tolerance) && b.Max.AlmostEqual(other.Max, tolerance)
 }
 
+// Valid reports whether every Min component is at most its corresponding Max
+// component. Non-finite NaN endpoints are invalid.
 func (b Box3) Valid() bool {
 	return b.Min.X <= b.Max.X && b.Min.Y <= b.Max.Y && b.Min.Z <= b.Max.Z
 }
-func (b Box3) Empty() bool              { return !b.Valid() }
-func (b Box3) Extent() Vec3             { return b.Max.Sub(b.Min) }
-func (b Box3) Center() Vec3             { return b.Min.Add(b.Max).Scale(0.5) }
-func (b Box3) Merge(other Box3) Box3    { return NewBox3(b.Min.Min(other.Min), b.Max.Max(other.Max)) }
+
+// Empty reports whether b is not a valid box. A point box is valid and is not
+// empty.
+func (b Box3) Empty() bool  { return !b.Valid() }
+func (b Box3) Extent() Vec3 { return b.Max.Sub(b.Min) }
+func (b Box3) Center() Vec3 { return b.Min.Add(b.Max).Scale(0.5) }
+
+// Merge returns the componentwise bounds containing b and other. EmptyBox3 is
+// an identity for this operation.
+func (b Box3) Merge(other Box3) Box3 { return NewBox3(b.Min.Min(other.Min), b.Max.Max(other.Max)) }
+
+// Expanded returns the componentwise bounds containing b and point. Repeatedly
+// expanding EmptyBox3 accumulates point bounds.
 func (b Box3) Expanded(point Vec3) Box3 { return NewBox3(b.Min.Min(point), b.Max.Max(point)) }
+
+// Intersection returns the inclusive overlap of b and other. Boundary contact
+// can produce a valid point or flat box. It returns false when either input is
+// invalid or the boxes are disjoint.
 func (b Box3) Intersection(other Box3) (Box3, bool) {
 	result := NewBox3(b.Min.Max(other.Min), b.Max.Min(other.Max))
 	return result, result.Valid()
 }
+
+// ContainsPoint reports whether point lies within b's inclusive bounds.
 func (b Box3) ContainsPoint(point Vec3) bool {
 	return b.Valid() && point.X >= b.Min.X && point.X <= b.Max.X && point.Y >= b.Min.Y && point.Y <= b.Max.Y &&
 		point.Z >= b.Min.Z && point.Z <= b.Max.Z
@@ -178,6 +195,8 @@ func (b Box3) ContainsBox(other Box3) Containment {
 	}
 	return ContainmentIntersects
 }
+
+// Intersects reports whether two valid boxes overlap or touch.
 func (b Box3) Intersects(other Box3) bool {
 	return b.Valid() && other.Valid() && b.Min.X <= other.Max.X && b.Max.X >= other.Min.X &&
 		b.Min.Y <= other.Max.Y && b.Max.Y >= other.Min.Y && b.Min.Z <= other.Max.Z && b.Max.Z >= other.Min.Z
@@ -228,7 +247,8 @@ func (b Box3) Corners() [8]Vec3 {
 	}
 }
 
-// Transformed returns the axis-aligned bounds of all transformed corners.
+// Transformed returns the axis-aligned bounds of all transformed corners. It
+// returns false for an invalid box or non-finite transformed corner.
 func (b Box3) Transformed(matrix Mat4) (Box3, bool) {
 	if !b.Valid() {
 		return Box3{}, false

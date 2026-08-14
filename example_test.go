@@ -207,6 +207,54 @@ func ExampleBox3FromPoints() {
 	// max: 2 5 8
 }
 
+func ExampleEmptyBox3() {
+	box := math3d.EmptyBox3()
+	for _, point := range []math3d.Vec3{
+		math3d.V3(2, -1, 4),
+		math3d.V3(-3, 5, 1),
+		math3d.V3(0, 2, 8),
+	} {
+		box = box.Expanded(point)
+	}
+
+	fmt.Printf("min: %.0f %.0f %.0f\n", box.Min.X, box.Min.Y, box.Min.Z)
+	fmt.Printf("max: %.0f %.0f %.0f\n", box.Max.X, box.Max.Y, box.Max.Z)
+	// Output:
+	// min: -3 -1 1
+	// max: 2 5 8
+}
+
+func ExampleBox3_Intersection() {
+	left := math3d.NewBox3(math3d.V3(0, 0, 0), math3d.V3(3, 3, 3))
+	right := math3d.NewBox3(math3d.V3(2, -1, 1), math3d.V3(4, 2, 5))
+	overlap, ok := left.Intersection(right)
+	if !ok {
+		return
+	}
+
+	fmt.Printf("min: %.0f %.0f %.0f\n", overlap.Min.X, overlap.Min.Y, overlap.Min.Z)
+	fmt.Printf("max: %.0f %.0f %.0f\n", overlap.Max.X, overlap.Max.Y, overlap.Max.Z)
+	// Output:
+	// min: 2 0 1
+	// max: 3 2 3
+}
+
+func ExamplePlane_Project() {
+	// 2*x-4=0 is x=2. The normal deliberately has length 2.
+	plane := math3d.NewPlane(math3d.V3(2, 0, 0), -4)
+	point := math3d.V3(5, 1, -1)
+	projected, ok := plane.Project(point)
+	if !ok {
+		return
+	}
+
+	fmt.Printf("classification: %.0f\n", plane.ClassifyPoint(point))
+	fmt.Printf("projected: %.0f %.0f %.0f\n", projected.X, projected.Y, projected.Z)
+	// Output:
+	// classification: 6
+	// projected: 2 1 -1
+}
+
 func ExampleRay_IntersectSphere() {
 	// Direction is not unit length, so t is a ray parameter rather than a
 	// Euclidean distance.
