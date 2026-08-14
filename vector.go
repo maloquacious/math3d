@@ -66,11 +66,15 @@ func (v Vec2) Reflect(normal Vec2) (Vec2, bool) {
 func (v Vec2) IsNaN() bool    { return math.IsNaN(float64(v.X)) || math.IsNaN(float64(v.Y)) }
 func (v Vec2) IsInf() bool    { return math.IsInf(float64(v.X), 0) || math.IsInf(float64(v.Y), 0) }
 func (v Vec2) IsFinite() bool { return !v.IsNaN() && !v.IsInf() }
+
+// AlmostEqual compares corresponding components using a strict absolute
+// tolerance.
 func (v Vec2) AlmostEqual(other Vec2, tolerance float32) bool {
 	return abs32(v.X-other.X) < tolerance && abs32(v.Y-other.Y) < tolerance
 }
 
-// DVec2 converts v to float64 precision.
+// DVec2 widens v to float64 without restoring precision previously lost in its
+// float32 components.
 func (v Vec2) DVec2() DVec2 { return DV2(float64(v.X), float64(v.Y)) }
 
 // Vec3 promotes v with a zero Z component.
@@ -295,9 +299,15 @@ func (v Vec3) IsInf() bool {
 	return math.IsInf(float64(v.X), 0) || math.IsInf(float64(v.Y), 0) || math.IsInf(float64(v.Z), 0)
 }
 func (v Vec3) IsFinite() bool { return !v.IsNaN() && !v.IsInf() }
+
+// AlmostEqual compares corresponding components using a strict absolute
+// tolerance.
 func (v Vec3) AlmostEqual(other Vec3, tolerance float32) bool {
 	return abs32(v.X-other.X) < tolerance && abs32(v.Y-other.Y) < tolerance && abs32(v.Z-other.Z) < tolerance
 }
+
+// DVec3 widens v to float64 without restoring precision previously lost in its
+// float32 components.
 func (v Vec3) DVec3() DVec3 { return DV3(float64(v.X), float64(v.Y), float64(v.Z)) }
 
 func (v Vec3) XY() Vec2  { return V2(v.X, v.Y) }
@@ -355,9 +365,15 @@ func (v Vec4) IsInf() bool {
 	return math.IsInf(float64(v.X), 0) || math.IsInf(float64(v.Y), 0) || math.IsInf(float64(v.Z), 0) || math.IsInf(float64(v.W), 0)
 }
 func (v Vec4) IsFinite() bool { return !v.IsNaN() && !v.IsInf() }
+
+// AlmostEqual compares corresponding components using a strict absolute
+// tolerance.
 func (v Vec4) AlmostEqual(o Vec4, tolerance float32) bool {
 	return abs32(v.X-o.X) < tolerance && abs32(v.Y-o.Y) < tolerance && abs32(v.Z-o.Z) < tolerance && abs32(v.W-o.W) < tolerance
 }
+
+// DVec4 widens v to float64 without restoring precision previously lost in its
+// float32 components.
 func (v Vec4) DVec4() DVec4 { return DV4(float64(v.X), float64(v.Y), float64(v.Z), float64(v.W)) }
 
 // Vec2 returns the X and Y components.

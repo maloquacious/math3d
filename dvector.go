@@ -2,7 +2,7 @@ package math3d
 
 import "math"
 
-// DVec2 is the upstream DVector2 value.
+// DVec2 is a float64 2D vector. Its zero value is the zero vector.
 type DVec2 struct{ X, Y float64 }
 
 func DV2(x, y float64) DVec2                  { return DVec2{X: x, Y: y} }
@@ -34,12 +34,18 @@ func (v DVec2) Normalized() (DVec2, bool) {
 func (v DVec2) IsNaN() bool    { return math.IsNaN(v.X) || math.IsNaN(v.Y) }
 func (v DVec2) IsInf() bool    { return math.IsInf(v.X, 0) || math.IsInf(v.Y, 0) }
 func (v DVec2) IsFinite() bool { return !v.IsNaN() && !v.IsInf() }
+
+// AlmostEqual compares corresponding components using a strict absolute
+// tolerance.
 func (v DVec2) AlmostEqual(o DVec2, tolerance float64) bool {
 	return math.Abs(v.X-o.X) < tolerance && math.Abs(v.Y-o.Y) < tolerance
 }
+
+// Vec2 narrows v to float32 precision. Components can be rounded or overflow
+// to an infinity.
 func (v DVec2) Vec2() Vec2 { return V2(float32(v.X), float32(v.Y)) }
 
-// DVec3 is the upstream DVector3 value.
+// DVec3 is a float64 3D vector. Its zero value is the zero vector.
 type DVec3 struct{ X, Y, Z float64 }
 
 func DV3(x, y, z float64) DVec3               { return DVec3{X: x, Y: y, Z: z} }
@@ -71,12 +77,18 @@ func (v DVec3) Normalized() (DVec3, bool) {
 func (v DVec3) IsNaN() bool    { return math.IsNaN(v.X) || math.IsNaN(v.Y) || math.IsNaN(v.Z) }
 func (v DVec3) IsInf() bool    { return math.IsInf(v.X, 0) || math.IsInf(v.Y, 0) || math.IsInf(v.Z, 0) }
 func (v DVec3) IsFinite() bool { return !v.IsNaN() && !v.IsInf() }
+
+// AlmostEqual compares corresponding components using a strict absolute
+// tolerance.
 func (v DVec3) AlmostEqual(o DVec3, tolerance float64) bool {
 	return math.Abs(v.X-o.X) < tolerance && math.Abs(v.Y-o.Y) < tolerance && math.Abs(v.Z-o.Z) < tolerance
 }
+
+// Vec3 narrows v to float32 precision. Components can be rounded or overflow
+// to an infinity.
 func (v DVec3) Vec3() Vec3 { return V3(float32(v.X), float32(v.Y), float32(v.Z)) }
 
-// DVec4 is the upstream DVector4 value.
+// DVec4 is a float64 4D vector. Its zero value is the zero vector.
 type DVec4 struct{ X, Y, Z, W float64 }
 
 func DV4(x, y, z, w float64) DVec4            { return DVec4{X: x, Y: y, Z: z, W: w} }
@@ -115,7 +127,13 @@ func (v DVec4) IsInf() bool {
 	return math.IsInf(v.X, 0) || math.IsInf(v.Y, 0) || math.IsInf(v.Z, 0) || math.IsInf(v.W, 0)
 }
 func (v DVec4) IsFinite() bool { return !v.IsNaN() && !v.IsInf() }
+
+// AlmostEqual compares corresponding components using a strict absolute
+// tolerance.
 func (v DVec4) AlmostEqual(o DVec4, tolerance float64) bool {
 	return math.Abs(v.X-o.X) < tolerance && math.Abs(v.Y-o.Y) < tolerance && math.Abs(v.Z-o.Z) < tolerance && math.Abs(v.W-o.W) < tolerance
 }
+
+// Vec4 narrows v to float32 precision. Components can be rounded or overflow
+// to an infinity.
 func (v DVec4) Vec4() Vec4 { return V4(float32(v.X), float32(v.Y), float32(v.Z), float32(v.W)) }

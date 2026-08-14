@@ -297,7 +297,8 @@ func (q DQuat) AlmostEqual(other DQuat, tolerance float64) bool {
 	return almostEqual64(tolerance, q.X-other.X, q.Y-other.Y, q.Z-other.Z, q.W-other.W)
 }
 
-// Quat converts q to float32 precision.
+// Quat narrows q to float32 precision. Components can be rounded or overflow
+// to an infinity, and the result is not normalized.
 func (q DQuat) Quat() Quat {
 	return NewQuat(float32(q.X), float32(q.Y), float32(q.Z), float32(q.W))
 }

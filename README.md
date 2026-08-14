@@ -99,6 +99,8 @@ executable [`ExampleTransform`](example_test.go).
   rigid or general transforms and apply matrix and quaternion ordering correctly
 - [Pick and intersect geometry](docs/picking-and-intersections.md) — construct
   world-space screen rays and interpret shape-specific intersection results
+- [Choose precision and validate representations](docs/precision-and-validity.md)
+  — select the available float32 or float64 families and handle zero values
 
 ## API documentation
 

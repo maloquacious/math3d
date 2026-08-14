@@ -356,7 +356,8 @@ func (b DBox3) ContainsPoint(point DVec3) bool {
 
 func EmptyDBox3() DBox3 { return NewDBox3(SplatDV3(math.Inf(1)), SplatDV3(math.Inf(-1))) }
 
-// Box3 converts b to float32 precision.
+// Box3 narrows b to float32 precision. Endpoints can be rounded or overflow to
+// an infinity.
 func (b DBox3) Box3() Box3 { return NewBox3(b.Min.Vec3(), b.Max.Vec3()) }
 
 // DBox4 is the upstream DAABox4D value. Construction preserves endpoint order;

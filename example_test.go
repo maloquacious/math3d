@@ -2,6 +2,7 @@ package math3d_test
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/maloquacious/math3d"
 )
@@ -62,6 +63,20 @@ func ExampleVec3() {
 	// Output:
 	// unit: 0.6 0.0 0.8
 	// dot: 3.0
+}
+
+func ExampleDVec3() {
+	precise := math3d.DV3(16_777_217, 1e40, 1.0/3.0)
+	narrowed := precise.Vec3()
+	widenedAgain := narrowed.DVec3()
+
+	fmt.Printf("narrowed integer: %.0f\n", narrowed.X)
+	fmt.Printf("range overflow: %t\n", math.IsInf(float64(narrowed.Y), 1))
+	fmt.Printf("widened again: %.0f\n", widenedAgain.X)
+	// Output:
+	// narrowed integer: 16777216
+	// range overflow: true
+	// widened again: 16777216
 }
 
 func ExampleTransform() {
