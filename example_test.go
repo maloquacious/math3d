@@ -148,6 +148,33 @@ func ExampleMat4_RayFromNormalizedScreen() {
 	// direction: 0 0 -1
 }
 
+func ExampleMat4_RayFromNormalizedScreen_worldSpace() {
+	view, ok := math3d.LookAtMat4(
+		math3d.V3(0, 0, 5),
+		math3d.V3(0, 0, 0),
+		math3d.V3(0, 1, 0),
+	)
+	if !ok {
+		return
+	}
+	projection, ok := math3d.PerspectiveFOVMat4(math3d.HalfPi, 1, 1, 10)
+	if !ok {
+		return
+	}
+
+	viewProjection := view.Mul(projection)
+	ray, ok := viewProjection.RayFromNormalizedScreen(math3d.V2(0.5, 0.5))
+	if !ok {
+		return
+	}
+
+	fmt.Printf("origin: %.0f %.0f %.0f\n", ray.Origin.X, ray.Origin.Y, ray.Origin.Z)
+	fmt.Printf("direction: %.0f %.0f %.0f\n", ray.Direction.X, ray.Direction.Y, ray.Direction.Z)
+	// Output:
+	// origin: 0 0 4
+	// direction: 0 0 -1
+}
+
 func ExampleBox3FromPoints() {
 	box, ok := math3d.Box3FromPoints([]math3d.Vec3{
 		math3d.V3(2, -1, 4),
@@ -180,4 +207,25 @@ func ExampleRay_IntersectSphere() {
 	// Output:
 	// t: 2
 	// point: -1 0 0
+}
+
+func ExampleRay_IntersectTriangle() {
+	triangle := math3d.NewTriangle3(
+		math3d.V3(-1, -1, 0),
+		math3d.V3(1, -1, 0),
+		math3d.V3(0, 1, 0),
+	)
+	// The direction has length 2, so t is a parameter rather than a distance.
+	ray := math3d.NewRay(math3d.V3(0, 0, 1), math3d.V3(0, 0, -2))
+	t, ok := ray.IntersectTriangle(triangle, math3d.Tolerance)
+	if !ok {
+		return
+	}
+	hit := ray.PointAt(t)
+
+	fmt.Printf("t: %.1f\n", t)
+	fmt.Printf("hit: %.0f %.0f %.0f\n", hit.X, hit.Y, hit.Z)
+	// Output:
+	// t: 0.5
+	// hit: 0 0 0
 }

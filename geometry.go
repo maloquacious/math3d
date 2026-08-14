@@ -201,7 +201,8 @@ func (p DPlane) AlmostEqual(other DPlane, tolerance float64) bool {
 // RayFromNormalizedScreen constructs a ray by unprojecting screen through m.
 // Screen uses normalized coordinates: (0, 0) is the top-left, (1, 1) is the
 // bottom-right, and values outside that range extrapolate beyond the viewport.
-// Clip-space depth is [0, 1].
+// Clip-space depth is [0, 1], and perspective helpers use right-handed
+// negative-Z-forward view space.
 //
 // The matrix is not an inverse: this method inverts it. A projection matrix
 // produces a view-space ray; a row-vector view-projection matrix
@@ -259,6 +260,9 @@ func (r Ray) AlmostEqual(other Ray, tolerance float32) bool {
 func (r Ray) PointAt(t float32) Vec3 { return r.Origin.Add(r.Direction.Scale(t)) }
 
 // IntersectBox returns the first non-negative parameter at which r meets box.
+// Box boundaries are included, and a ray originating inside or on the box
+// returns zero. It returns false for an invalid box, a non-finite ray, a zero
+// direction, or a miss.
 func (r Ray) IntersectBox(box Box3) (float32, bool) {
 	t, ok := intersectSlabs(
 		[3]float64{float64(r.Origin.X), float64(r.Origin.Y), float64(r.Origin.Z)},
@@ -272,8 +276,12 @@ func (r Ray) IntersectBox(box Box3) (float32, bool) {
 }
 
 // IntersectPlane returns the non-negative parameter at which r meets plane.
-// Parallel rays, including rays contained in the plane, do not have one
-// distinguished intersection and return false.
+// Tolerance is an absolute threshold on dot(Direction, plane.Normal) and also
+// permits a hit at most tolerance behind the origin, clamping its parameter to
+// zero. Parallel rays, including rays contained in the plane, do not have one
+// distinguished intersection and return false. It also returns false for a
+// negative tolerance, non-finite input, an invalid plane, or a hit farther
+// behind the origin.
 func (r Ray) IntersectPlane(plane Plane, tolerance float32) (float32, bool) {
 	denominator := r.Direction.Dot(plane.Normal)
 	if tolerance < 0 || !r.Origin.IsFinite() || !r.Direction.IsFinite() || !plane.isFinite() ||
@@ -291,7 +299,9 @@ func (r Ray) IntersectPlane(plane Plane, tolerance float32) (float32, bool) {
 }
 
 // IntersectSphere returns the first non-negative ray parameter at which r
-// meets sphere. It supports directions of any non-zero finite length.
+// meets sphere. It supports directions of any non-zero finite length. A ray
+// originating inside or on the sphere returns zero. It returns false for an
+// invalid sphere, a non-finite ray, a zero direction, or a miss.
 func (r Ray) IntersectSphere(sphere Sphere) (float32, bool) {
 	t, ok := intersectSphere64(r.Origin.DVec3(), r.Direction.DVec3(), sphere.Center.DVec3(), float64(sphere.Radius), sphere.Valid())
 	result := float32(t)
@@ -300,7 +310,11 @@ func (r Ray) IntersectSphere(sphere Sphere) (float32, bool) {
 
 // IntersectTriangle returns the positive ray parameter at which r meets
 // triangle. Both windings are accepted, and edges and vertices are included.
-// Hits at the ray origin or within tolerance of it are excluded.
+// Tolerance is an absolute determinant threshold for parallelism and the
+// exclusive lower bound for the returned parameter. Hits at the ray origin or
+// within tolerance of it are excluded. It returns false for negative or
+// non-finite tolerance, non-finite input, a parallel or degenerate triangle,
+// or a miss.
 func (r Ray) IntersectTriangle(triangle Triangle3, tolerance float32) (float32, bool) {
 	if tolerance < 0 || !finite32(tolerance) || !r.Origin.IsFinite() || !r.Direction.IsFinite() ||
 		!triangle.A.IsFinite() || !triangle.B.IsFinite() || !triangle.C.IsFinite() {

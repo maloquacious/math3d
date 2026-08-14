@@ -398,7 +398,12 @@ func (m Mat4) Inverse() (Mat4, bool) {
 		float32(a[3][4]), float32(a[3][5]), float32(a[3][6]), float32(a[3][7])), true
 }
 
-// PerspectiveFOVMat4 creates a right-handed perspective projection with depth [0,1].
+// PerspectiveFOVMat4 creates a right-handed, negative-Z-forward perspective
+// projection with depth [0, 1]. It returns false when fieldOfView is at most
+// zero or at least Pi, near or far is at most zero, or near is not less than
+// far. An infinite positive far plane is supported. All other inputs must be
+// finite. Aspect is the viewport width divided by its height and must be
+// non-zero.
 func PerspectiveFOVMat4(fieldOfView, aspect, near, far float32) (Mat4, bool) {
 	if fieldOfView <= 0 || fieldOfView >= Pi || near <= 0 || far <= 0 || near >= far {
 		return Mat4{}, false
@@ -447,7 +452,9 @@ func OrthographicOffCenterMat4(left, right, bottom, top, near, far float32) Mat4
 		(left+right)/(left-right), (top+bottom)/(bottom-top), near/(near-far), 1)
 }
 
-// LookAtMat4 creates a right-handed view matrix. It fails for degenerate directions.
+// LookAtMat4 creates a right-handed view matrix with negative Z forward. It
+// fails when position and target do not define a finite direction or when up
+// and that direction cannot define a finite perpendicular axis.
 func LookAtMat4(position, target, up Vec3) (Mat4, bool) {
 	z, ok := position.Sub(target).Normalized()
 	if !ok {

@@ -97,6 +97,8 @@ executable [`ExampleTransform`](example_test.go).
   workflow using a rigid transform, world-space bounds, and a ray query
 - [Transform points, directions, and rotations](docs/transforms.md) — choose
   rigid or general transforms and apply matrix and quaternion ordering correctly
+- [Pick and intersect geometry](docs/picking-and-intersections.md) — construct
+  world-space screen rays and interpret shape-specific intersection results
 
 ## API documentation
 
