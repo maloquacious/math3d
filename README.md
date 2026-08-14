@@ -81,9 +81,16 @@ executable [`ExampleTransform`](example_test.go).
 
 ### Scalar and statistics helpers
 
-- Angle conversion and wrapping, interpolation, deterministic random values,
-  hashing, percentages, and powers of two
+- Angle conversion and wrapping; scalar and vector interpolation; deterministic
+  random values; hashing; percentages; and powers of two
 - Component-wise summary statistics for vector collections
+
+### Coordinates and records
+
+- Spherical, polar, log-polar, cylindrical, horizontal, geographic, Euler, and
+  axis-angle records
+- Integer and byte tuples; RGB, RGBA, and HDR colors; complex values; and
+  scalar domains
 
 ### Available float64 types
 

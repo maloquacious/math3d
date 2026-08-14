@@ -79,6 +79,28 @@ func ExampleDVec3() {
 	// widened again: 16777216
 }
 
+func ExampleStatsOf() {
+	stats := math3d.StatsOf([]math3d.Vec3{
+		math3d.V3(-2, 4, 8),
+		math3d.V3(6, -2, 4),
+	})
+	average, ok := math3d.StatsAverage(stats)
+	if !ok {
+		return
+	}
+	_, emptyAverageOK := math3d.StatsAverage(math3d.StatsOf([]math3d.Vec3(nil)))
+
+	fmt.Printf("min: %.0f %.0f %.0f\n", stats.Min.X, stats.Min.Y, stats.Min.Z)
+	fmt.Printf("max: %.0f %.0f %.0f\n", stats.Max.X, stats.Max.Y, stats.Max.Z)
+	fmt.Printf("average: %.0f %.0f %.0f\n", average.X, average.Y, average.Z)
+	fmt.Printf("empty average: %t\n", emptyAverageOK)
+	// Output:
+	// min: -2 -2 4
+	// max: 6 4 8
+	// average: 2 1 6
+	// empty average: false
+}
+
 func ExampleTransform() {
 	transform := math3d.NewTransform(
 		math3d.V3(10, 0, 0),

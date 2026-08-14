@@ -113,10 +113,10 @@ depend on the family:
 ## Do not infer coordinate-record angle units
 
 Rotation APIs use radians unless their declarations say otherwise. That rule
-does not establish units for upstream coordinate-record fields whose units were
-never specified. In particular, do not assume units for angles in `Spherical`,
-`Polar`, `LogPolar`, `Cylindrical`, `Horizontal`, or `Geo`. Treat those values
-as records until an application-level conversion establishes a unit contract.
+does not establish units for coordinate-record fields whose units are not
+specified. In particular, do not assume units for angles in `Spherical`,
+`Polar`, `LogPolar`, `Cylindrical`, `Horizontal`, or `Geo`. Treat those values as
+records until an application-level conversion establishes a unit contract.
 
 `Euler` and `AxisAngle` explicitly document radians and therefore are not
 ambiguous in this way.

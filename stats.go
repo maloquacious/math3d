@@ -17,9 +17,9 @@ type statsVector interface {
 	Vec2 | Vec3 | Vec4 | DVec2 | DVec3 | DVec4
 }
 
-// StatsOf summarizes vectors component by component. Unlike upstream, the
-// first value initializes Min and Max, so an all-positive or all-negative
-// sequence is not biased toward zero.
+// StatsOf summarizes vectors component by component. An empty slice returns
+// zero Stats. The first value initializes Min and Max, so an all-positive or
+// all-negative sequence is not biased toward zero.
 func StatsOf[T statsVector](values []T) Stats[T] {
 	if len(values) == 0 {
 		return Stats[T]{}
