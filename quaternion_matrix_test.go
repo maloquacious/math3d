@@ -65,6 +65,90 @@ func TestQuaternionCreationInterpolationAndRotation(t *testing.T) {
 	}
 }
 
+func TestQuaternionVectorRotationForms(t *testing.T) {
+	identity := IdentityQuat()
+	if got := identity.RotateVec2(V2(2, 3)); got != V2(2, 3) {
+		t.Fatalf("identity RotateVec2 = %#v", got)
+	}
+	if got := identity.RotateVec4(V4(2, 3, 4, -7)); got != V4(2, 3, 4, -7) {
+		t.Fatalf("identity RotateVec4 = %#v", got)
+	}
+
+	q := QuatRotationX(HalfPi)
+	v2 := V2(0, 2)
+	v3 := V3(1, 2, 3)
+	v4 := V4(1, 2, 3, -7)
+	if got := q.RotateVec2(v2); !got.AlmostEqual(V2(0, 0), algorithmTolerance) {
+		t.Fatalf("RotateVec2 = %#v", got)
+	}
+	if got := q.RotateVec2ToVec4(v2); !got.AlmostEqual(V4(0, 0, 2, 1), algorithmTolerance) {
+		t.Fatalf("RotateVec2ToVec4 = %#v", got)
+	}
+	if got := q.RotateToVec4(v3); !got.AlmostEqual(V4(1, -3, 2, 1), algorithmTolerance) {
+		t.Fatalf("RotateToVec4 = %#v", got)
+	}
+	if got := q.RotateVec4(v4); !got.AlmostEqual(V4(1, -3, 2, -7), algorithmTolerance) || got.W != v4.W {
+		t.Fatalf("RotateVec4 = %#v", got)
+	}
+
+	matrix := Mat4FromQuat(q)
+	if got, want := q.RotateVec2ToVec4(v2), matrix.TransformVec4(V4(v2.X, v2.Y, 0, 1)); !got.AlmostEqual(want, algorithmTolerance) {
+		t.Fatalf("Vec2 quaternion/matrix mismatch: got %#v, want %#v", got, want)
+	}
+	if got, want := q.RotateToVec4(v3), matrix.TransformVec4(V4(v3.X, v3.Y, v3.Z, 1)); !got.AlmostEqual(want, algorithmTolerance) {
+		t.Fatalf("Vec3 quaternion/matrix mismatch: got %#v, want %#v", got, want)
+	}
+	if got, want := q.RotateVec4(v4), matrix.TransformVec4(v4); !got.AlmostEqual(want, algorithmTolerance) {
+		t.Fatalf("Vec4 quaternion/matrix mismatch: got %#v, want %#v", got, want)
+	}
+	if v2 != V2(0, 2) || v3 != V3(1, 2, 3) || v4 != V4(1, 2, 3, -7) {
+		t.Fatal("quaternion rotation mutated an input")
+	}
+}
+
+func TestLookAtQuat(t *testing.T) {
+	position := V3(3, 4, 5)
+	up := V3(0, 2, 0)
+	forward := V3(0, 0, -4)
+	identity, ok := LookAtQuat(position, position.Add(V3(0, 0, -10)), up, forward)
+	if !ok || !sameRotation(identity, IdentityQuat(), algorithmTolerance) {
+		t.Fatalf("canonical LookAtQuat = %#v, %v", identity, ok)
+	}
+	fromX, ok := LookAtQuat(Vec3{}, V3(0, 0, -1), V3(0, 1, 0), V3(1, 0, 0))
+	if !ok || !fromX.Rotate(V3(1, 0, 0)).AlmostEqual(V3(0, 0, -1), algorithmTolerance) {
+		t.Fatalf("caller-supplied forward LookAtQuat = %#v, %v", fromX, ok)
+	}
+
+	target := position.Add(V3(2, 3, -4))
+	rotation, ok := LookAtQuat(position, target, up, forward)
+	wantDirection, _ := target.Sub(position).Normalized()
+	if !ok || !rotation.Rotate(V3(0, 0, -1)).AlmostEqual(wantDirection, algorithmTolerance) {
+		t.Fatalf("tilted LookAtQuat = %#v, %v; rotated forward %#v, want %#v", rotation, ok, rotation.Rotate(V3(0, 0, -1)), wantDirection)
+	}
+	if got, want := rotation.Rotate(V3(0, 0, -1)), Mat4FromQuat(rotation).TransformDirection(V3(0, 0, -1)); !got.AlmostEqual(want, algorithmTolerance) {
+		t.Fatalf("look-at quaternion/matrix mismatch: got %#v, want %#v", got, want)
+	}
+
+	failures := []struct {
+		name                    string
+		position, target, up, f Vec3
+	}{
+		{"coincident", Vec3{}, Vec3{}, V3(0, 1, 0), V3(0, 0, -1)},
+		{"zero up", Vec3{}, V3(0, 0, -1), Vec3{}, V3(0, 0, -1)},
+		{"direction parallel up", Vec3{}, V3(0, 1, 0), V3(0, 1, 0), V3(0, 0, -1)},
+		{"zero forward", Vec3{}, V3(0, 0, -1), V3(0, 1, 0), Vec3{}},
+		{"forward parallel up", Vec3{}, V3(0, 0, -1), V3(0, 1, 0), V3(0, 2, 0)},
+		{"non-finite", Vec3{}, V3(float32(math.Inf(1)), 0, 0), V3(0, 1, 0), V3(0, 0, -1)},
+	}
+	for _, test := range failures {
+		t.Run(test.name, func(t *testing.T) {
+			if got, ok := LookAtQuat(test.position, test.target, test.up, test.f); ok || got != (Quat{}) {
+				t.Fatalf("LookAtQuat = %#v, %v; want failure", got, ok)
+			}
+		})
+	}
+}
+
 func TestMatrixRowVectorCompositionAndQuaternionRoundTrip(t *testing.T) {
 	translation := TranslationMat4(V3(10, 20, 30))
 	if got := translation.TransformPoint(V3(1, 2, 3)); got != V3(11, 22, 33) {

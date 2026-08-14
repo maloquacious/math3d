@@ -198,6 +198,46 @@ func (p DPlane) AlmostEqual(other DPlane, tolerance float64) bool {
 		almostEqual64(tolerance, p.D-other.D)
 }
 
+// RayFromNormalizedScreen constructs a ray by unprojecting screen through m.
+// Screen uses normalized coordinates: (0, 0) is the top-left, (1, 1) is the
+// bottom-right, and values outside that range extrapolate beyond the viewport.
+// Clip-space depth is [0, 1].
+//
+// The matrix is not an inverse: this method inverts it. A projection matrix
+// produces a view-space ray; a row-vector view-projection matrix
+// view.Mul(projection) produces a world-space ray. The ray starts on the near
+// clip plane, not at the camera, and its direction is normalized. It fails for
+// non-finite screen coordinates, a singular matrix, an invalid homogeneous
+// divide, or a degenerate direction.
+func (m Mat4) RayFromNormalizedScreen(screen Vec2) (Ray, bool) {
+	if !screen.IsFinite() {
+		return Ray{}, false
+	}
+	inverse, ok := m.Inverse()
+	if !ok {
+		return Ray{}, false
+	}
+
+	invertedY := V2(screen.X, 1-screen.Y)
+	clip := invertedY.Scale(2).Sub(SplatV2(1))
+	near := inverse.TransformVec4(V4(clip.X, clip.Y, 0, 1))
+	far := inverse.TransformVec4(V4(clip.X, clip.Y, 1, 1))
+	if !near.IsFinite() || !far.IsFinite() || near.W == 0 || far.W == 0 {
+		return Ray{}, false
+	}
+
+	nearPoint := V3(near.X/near.W, near.Y/near.W, near.Z/near.W)
+	farPoint := V3(far.X/far.W, far.Y/far.W, far.Z/far.W)
+	if !nearPoint.IsFinite() || !farPoint.IsFinite() {
+		return Ray{}, false
+	}
+	direction, ok := farPoint.Sub(nearPoint).Normalized()
+	if !ok || !direction.IsFinite() {
+		return Ray{}, false
+	}
+	return NewRay(nearPoint, direction), true
+}
+
 // Ray stores an origin and direction. Direction is not implicitly normalized,
 // and its length scales the ray parameter. A zero direction is representable
 // but does not define a geometric ray.

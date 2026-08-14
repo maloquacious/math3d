@@ -44,6 +44,25 @@ func ExampleMat4_Mul() {
 	// 5 1 0
 }
 
+func ExampleMat4_RayFromNormalizedScreen() {
+	projection, ok := math3d.PerspectiveFOVMat4(math3d.HalfPi, 1, 1, 10)
+	if !ok {
+		return
+	}
+	// Screen coordinates are normalized with a top-left origin. A projection
+	// matrix alone produces a view-space ray starting on the near clip plane.
+	ray, ok := projection.RayFromNormalizedScreen(math3d.V2(0.5, 0.5))
+	if !ok {
+		return
+	}
+
+	fmt.Printf("origin: %.0f %.0f %.0f\n", ray.Origin.X, ray.Origin.Y, ray.Origin.Z)
+	fmt.Printf("direction: %.0f %.0f %.0f\n", ray.Direction.X, ray.Direction.Y, ray.Direction.Z)
+	// Output:
+	// origin: 0 0 -1
+	// direction: 0 0 -1
+}
+
 func ExampleBox3FromPoints() {
 	box, ok := math3d.Box3FromPoints([]math3d.Vec3{
 		math3d.V3(2, -1, 4),

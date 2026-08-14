@@ -66,6 +66,35 @@ func SmoothStep(value1, value2, amount float32) float32 {
 	return Hermite(value1, 0, value2, 0, max(float32(0), min(amount, float32(1))))
 }
 
+// NearestPowerOfTwo returns the power of two whose base-two logarithm is
+// nearest to value's, matching the pinned upstream helper for positive inputs.
+// Zero, negative values, and results that do not fit in int32 fail.
+func NearestPowerOfTwo(value int32) (int32, bool) {
+	if value <= 0 {
+		return 0, false
+	}
+
+	unsigned := uint32(value)
+	exponent := bits.Len32(unsigned) - 1
+	lower := uint32(1) << exponent
+	if unsigned == lower {
+		return value, true
+	}
+
+	// Rounding log2(value) upward is equivalent to value/lower >= sqrt(2).
+	// Squaring keeps the comparison exact for integer inputs and fits in uint64
+	// for the complete positive int32 range.
+	valueSquared := uint64(unsigned) * uint64(unsigned)
+	lowerSquaredTwice := 2 * uint64(lower) * uint64(lower)
+	if valueSquared < lowerSquaredTwice {
+		return int32(lower), true
+	}
+	if exponent >= 30 {
+		return 0, false
+	}
+	return int32(lower << 1), true
+}
+
 // WrapAngle wraps an angle in radians to (-Pi, Pi].
 func WrapAngle(angle float32) float32 {
 	angle = float32(math.Mod(float64(angle), float64(TwoPi)))

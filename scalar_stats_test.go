@@ -78,6 +78,34 @@ func TestDomainAndScalarHelpers(t *testing.T) {
 	}
 }
 
+func TestNearestPowerOfTwo(t *testing.T) {
+	tests := []struct {
+		name  string
+		value int32
+		want  int32
+		ok    bool
+	}{
+		{name: "negative", value: -1},
+		{name: "zero"},
+		{name: "one", value: 1, want: 1, ok: true},
+		{name: "exact power", value: 1024, want: 1024, ok: true},
+		{name: "below logarithmic midpoint", value: 5, want: 4, ok: true},
+		{name: "above logarithmic midpoint", value: 6, want: 8, ok: true},
+		{name: "largest non-overflowing input", value: 1_518_500_249, want: 1 << 30, ok: true},
+		{name: "rounds beyond int32", value: 1_518_500_250},
+		{name: "maximum int32", value: math.MaxInt32},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got, ok := NearestPowerOfTwo(test.value)
+			if got != test.want || ok != test.ok {
+				t.Fatalf("NearestPowerOfTwo(%d) = (%d, %v), want (%d, %v)", test.value, got, ok, test.want, test.ok)
+			}
+		})
+	}
+}
+
 func TestHashAndStatelessRandom(t *testing.T) {
 	if got := CombineHash(1, 2); got != 35 {
 		t.Fatalf("CombineHash(1, 2) = %d", got)

@@ -173,11 +173,81 @@ func (q Quat) Rotate(v Vec3) Vec3 {
 	return v.Add(t.Scale(q.W)).Add(qv.Cross(t))
 }
 
+// RotateVec2 rotates v embedded as (X, Y, 0) and returns the resulting X and Y
+// components. Rotation out of the XY plane is discarded. q must be unit.
+func (q Quat) RotateVec2(v Vec2) Vec2 {
+	rotated := q.Rotate(v.Vec3())
+	return V2(rotated.X, rotated.Y)
+}
+
+// RotateVec4 rotates the X, Y, and Z components of v and preserves W exactly.
+// q must be unit.
+func (q Quat) RotateVec4(v Vec4) Vec4 {
+	rotated := q.Rotate(v.Vec3())
+	return V4(rotated.X, rotated.Y, rotated.Z, v.W)
+}
+
+// RotateVec2ToVec4 rotates v embedded as (X, Y, 0) and returns homogeneous
+// coordinates with W set to 1. q must be unit.
+func (q Quat) RotateVec2ToVec4(v Vec2) Vec4 {
+	rotated := q.Rotate(v.Vec3())
+	return V4(rotated.X, rotated.Y, rotated.Z, 1)
+}
+
+// RotateToVec4 rotates v and returns homogeneous coordinates with W set to 1.
+// q must be unit.
+func (q Quat) RotateToVec4(v Vec3) Vec4 {
+	rotated := q.Rotate(v)
+	return V4(rotated.X, rotated.Y, rotated.Z, 1)
+}
+
+// LookAtQuat returns a rotation that turns the caller-supplied localForward
+// direction toward target-position while using up to define the horizontal
+// plane. Inputs need not be normalized, but localForward must be perpendicular
+// to up. It fails for non-finite or zero inputs, coincident position and target,
+// direction/up parallelism, or localForward/up non-perpendicularity.
+func LookAtQuat(position, target, up, localForward Vec3) (Quat, bool) {
+	if !position.IsFinite() || !target.IsFinite() || !up.IsFinite() || !localForward.IsFinite() {
+		return Quat{}, false
+	}
+	direction, ok := target.Sub(position).Normalized()
+	if !ok {
+		return Quat{}, false
+	}
+	unitUp, ok := up.Normalized()
+	if !ok {
+		return Quat{}, false
+	}
+	forward, ok := localForward.Normalized()
+	if !ok || abs32(forward.Dot(unitUp)) >= Tolerance {
+		return Quat{}, false
+	}
+	projectedDirection, ok := direction.Sub(unitUp.Scale(direction.Dot(unitUp))).Normalized()
+	if !ok {
+		return Quat{}, false
+	}
+	heading, ok := RotationBetween(forward, projectedDirection, unitUp)
+	if !ok {
+		return Quat{}, false
+	}
+	tilt, ok := RotationBetween(projectedDirection, direction, unitUp)
+	if !ok {
+		return Quat{}, false
+	}
+	result := tilt.Mul(heading)
+	if !finite32(result.X) || !finite32(result.Y) || !finite32(result.Z) || !finite32(result.W) {
+		return Quat{}, false
+	}
+	return result, true
+}
+
 // RotationBetween returns a rotation from one unit vector to another. For
 // opposite vectors, oppositeAxis must be unit and perpendicular to from.
 func RotationBetween(from, to, oppositeAxis Vec3) (Quat, bool) {
 	unit := func(v Vec3) bool {
-		return v.IsFinite() && math.Abs(v.MagnitudeSquared()-1) < float64(Tolerance)
+		// Normalizing ordinary float32 vectors can leave the squared magnitude
+		// one rounding step beyond Tolerance.
+		return v.IsFinite() && math.Abs(v.MagnitudeSquared()-1) < float64(2*Tolerance)
 	}
 	if !unit(from) || !unit(to) {
 		return Quat{}, false

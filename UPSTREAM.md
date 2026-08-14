@@ -67,7 +67,7 @@ Status meanings:
 | `CylindricalCoordinate` | `Cylindrical` | implemented (milestone 2) |
 | `HorizontalCoordinate` | `Horizontal` | implemented (milestone 2) |
 | `GeoCoordinate` | `Geo` | implemented (milestone 2) |
-| `AxisAngle`, `Euler` | unchanged | records implemented (milestone 4); algorithms planned |
+| `AxisAngle`, `Euler` | unchanged | records implemented (milestone 4); substantive conversions are represented by the quaternion API |
 | `Stats<T>` | `Stats[T]` | implemented (milestone 9), with vector aggregation helpers |
 | `ValueDomain` | `Domain` | implemented (milestone 9) |
 | `ContainmentType` | `Containment` | implemented (milestone 2), with explicit zero value |
@@ -82,11 +82,11 @@ will therefore use `float64`. There is no double-precision matrix declaration.
 | Upstream declaration | Go treatment | Status |
 |---|---|---|
 | `Constants` | typed constants and value-returning functions | implemented (milestone 2) |
-| `MathOps` | focused methods and package functions | milestone 9 scalar interpolation, angle, validation, conversion, statistics, and swizzle helpers implemented; standard-library duplicates omitted |
+| `MathOps` | focused methods and package functions | milestone 9 scalar interpolation, angle conversion, validation, conversion, statistics, and swizzle helpers implemented; remaining candidates classified below |
 | `Hash` | `CombineHash` and `HashInts` | implemented (milestone 9) |
 | `StatelessRandom` | deterministic scalar and vector package functions | implemented (milestone 9) |
 | `LinqUtil` | ordinary slices and standard-library functions | omitted; no Go-specific helper remained useful |
-| `Transformable3D` | concrete operations, not a namespace type | deferred |
+| `Transformable3D` | concrete operations, not a namespace type | generic conveniences omitted; optional concrete conveniences require consumer demand |
 | `ITransformable3D<TSelf>` | concrete methods | omitted |
 | `IMappable<TContainer,TPart>` | add a small interface only if multiple Go implementations require it | omitted initially |
 | `IPoints`, `IPoints2D` | slices at algorithm boundaries | omitted |
@@ -98,6 +98,79 @@ the millimetre/foot conversion factors. The upstream names/comments for the
 last two are misleading; the Go port will use numerically correct directional
 names and record that compatibility deviation below. Mutable plane variables
 (`XYPlane`, `XZPlane`, and `YZPlane`) will become value-returning functions.
+
+## Remaining helper parity audit
+
+The tables below audit every public helper in the pinned
+`MathOpsPartial.cs`, `Quaternion.cs`, and `ITransformable.cs` that was not
+already a direct name-for-name part of the initial type inventory. “Required”
+means useful geometry behavior included in the completed parity pass. Optional
+layout and composition rows remain unassigned unless a consumer requests them.
+
+### Required geometry behavior
+
+| Pinned upstream helper | Go disposition |
+|---|---|
+| `Vector3.Projection`, `Rejection` | Implemented as fallible `Vec3.Projection` and `Vec3.Rejection`; zero, non-finite, overflowed, and non-finite-result cases fail. |
+| `Reflect(Vector2, Vector2)`, `Reflect(Vector3, Vector3)` | Implemented as fallible `Vec2.Reflect` and `Vec3.Reflect`. Unlike upstream, non-unit normals are supported by dividing by their squared magnitude. |
+| `Vector3.IsPerpendicular`, `Colinear` | Implemented as `Vec3.IsPerpendicular` and `Vec3.IsCollinear`. Perpendicularity preserves the pinned strict absolute dot tolerance; collinearity uses an unsigned 3D angular tolerance and accepts opposite directions, fixing the defective one-sided signed-angle implementation. |
+| `Coplanar(Vector3, Vector3, Vector3, Vector3)` | Implemented as `Coplanar`, preserving the pinned strict absolute scalar-triple-product tolerance and documenting its scale dependence. |
+| `Vector3.IsBackFace` | Implemented as `Vec3.IsBackFace`; the receiver is the surface normal and the argument is the line-of-sight direction. Zero and invalid inputs return false. |
+| `Vector3.Angle`, `SignedAngle` overloads | Implemented as fallible `Vec3.Angle` and `Vec3.SignedAngle`; angles are radians, and the sign is determined by `axis·(from×to)`. Ambiguous nonzero signed angles fail. |
+| `Vector3.CatmullRom`, `Hermite`, `SmoothStep` | Implemented as component-wise `Vec3.CatmullRom`, `Vec3.Hermite`, and `Vec3.SmoothStep`, reusing the scalar kernels and their clamping contracts. No pinned `Vector2`, `Vector4`, or double-vector overload exists. |
+| Quaternion transforms of `Vector2`, `Vector3`, and `Vector4`, including `TransformToVector4` | Implemented as `Quat.RotateVec2`, `Quat.RotateVec4`, `Quat.RotateVec2ToVec4`, and `Quat.RotateToVec4`, alongside the existing `Quat.Rotate(Vec3)`. The 2D form embeds with Z = 0 and discards output Z, the 4D form preserves input W exactly, and the to-Vec4 forms write W = 1. |
+| `Quaternion.LookAt` | Implemented as fallible `LookAtQuat`, preserving the pinned caller-supplied local-forward axis, up-plane heading followed by tilt, and `q2 * q1` multiplication order. Unlike upstream, it normalizes finite nonzero `up` and `localForward` and rejects coincident points, direction/up parallelism, and local-forward/up non-perpendicularity instead of propagating NaNs or constructing an ambiguous rotation. |
+| `TransformNormal(Vector2/Vector3/Vector4, Matrix4x4)` | Implemented for the package's primary 3D geometry as fallible `Mat4.TransformNormal`. Unlike the pinned helpers, which merely apply the linear matrix, Go uses the row-vector inverse transpose so normals remain perpendicular under non-uniform scale and shear. The result is not normalized, matching the pinned magnitude contract. |
+| `Matrix4x4.RayFromProjectionMatrix` | Implemented as `Mat4.RayFromNormalizedScreen`. It consumes normalized top-left-origin coordinates, uses clip depths 0 and 1, and inverts the supplied projection or row-vector view-projection matrix. The result starts on the near clip plane and has a unit direction; invalid inversion, homogeneous division, and direction report failure. |
+| `ToNearestPowOf2` | Implemented as `NearestPowerOfTwo(int32) (int32, bool)`. It preserves logarithmic nearest-power rounding for positive inputs and reports zero, negative inputs, and `int32` result overflow as failures. |
+
+The pinned source has no double-precision counterparts for projection,
+rejection, reflection, perpendicularity, collinearity, angles, coplanarity, or
+back-face tests, so Step 2 intentionally adds no `DVec` relation methods.
+
+### Optional data-layout compatibility
+
+| Pinned upstream helper | Go disposition |
+|---|---|
+| `Matrix4x4.ToFloats`, `Matrix4x4[].ToFloats` | Optional row-major component flattening; add only with a concrete slice/array ownership contract. |
+| `float[].ToMatrix`, `ToMatrixArray` | Optional inverse of the pinned 16-float row-major layout; malformed-length behavior must be defined rather than relying on indexing or `Debug.Assert`. |
+| `float[].ToAABoxArray` | Optional packed-box decoding in `Min.X, Min.Y, Min.Z, Max.X, Max.Y, Max.Z` order; add only for a consumer of that format. |
+| `Quaternion.Vector4` | Optional four-component record conversion. Public quaternion fields and `NewQuat` already expose the component layout, so this is not an algorithmic parity gap. |
+
+### Existing behavior under idiomatic Go names
+
+| Pinned upstream helper | Existing Go behavior |
+|---|---|
+| `Percentage`; scalar `CatmullRom`, `Hermite`, `SmoothStep`, `WrapAngle`, `IsNonZeroAndValid` | `Percentage`, `CatmullRom`, `Hermite`, `SmoothStep`, `WrapAngle`, and `IsNonZeroAndValid`. |
+| Scalar/vector splat, narrowing, widening, and component conversions | `SplatV2`/`SplatV3`/`SplatV4`, `Vec2.Vec3`, `Vec2.Vec4`, `Vec3.Vec4`, `Vec4.Vec2`, and `Vec4.Vec3`. |
+| `Vector3.Transform(Quaternion)` | `Quat.Rotate(Vec3)`. |
+| `Vector3.Rotate(axis, angle)` | `Mat4FromAxisAngle(axis, angle).TransformDirection(v)` or `QuatFromAxisAngle(axis, angle).Rotate(v)`; the upstream method is only this composition. |
+| `Vector2.Transform(Matrix4x4)` and matrix `TransformToVector4` overloads | `Mat4.TransformPoint`/`TransformVec4` with explicit `Z = 0` and `W = 1` embedding. Keeping embedding visible avoids overload-dependent point semantics. |
+| `Stats<Vector3>.ToBox`, `Stats<DVector3>.ToBox`, `IEnumerable<Vector3>.ToBox` | `NewBox3`, `NewDBox3`, and `Box3FromPoints`. |
+| `Vector3.ToMatrix`, `Quaternion.ToMatrix`, `Transform.ToMatrix` | `TranslationMat4`, `Mat4FromQuat`, and `Transform.Mat4`. |
+| Quaternion identity, vector/scalar construction, length, normalization, conjugate, inverse, axis/Euler/axis-specific/yaw-pitch-roll creation | `IdentityQuat`, `QuatFromVector`, quaternion methods, `QuatFromAxisAngle`, `QuatFromEulerAngles`, `QuatRotationX/Y/Z`, and `QuatFromYawPitchRoll`. |
+| `Quaternion.CreateRotationFromAToB`, `CreateFromRotationMatrix` | `RotationBetween` and `Mat4.Quat`. |
+| Quaternion dot, slerp, lerp, concatenate, arithmetic operators, and `ToEulerAngles` | `Quat.Dot`, `Quat.Slerp`, `Quat.Lerp`, `Concatenate`, arithmetic methods, and `Quat.EulerAngles`; fallible operations use Go's `(value, ok)` convention. |
+| `Transformable3D.Multiply(params Matrix4x4[])` | Repeated `Mat4.Mul`, with the package's documented left-to-right application order. A variadic fold adds no geometry behavior. |
+
+### Standard-library or generated duplicates
+
+| Pinned upstream helper | Go disposition |
+|---|---|
+| `Vector4.Transform(Matrix4x4)` forwarding overload | Generated/self-forwarding duplicate of matrix-vector transformation; use `Mat4.TransformVec4`. |
+| Static `Cross(Vector3, Vector3)` and `Cross(DVector3, DVector3)` | Generated-style duplicates of `Vec3.Cross` and `DVec3.Cross`. |
+| Quaternion `IsIdentity` and equality/operator-shaped members | Direct comparison with `IdentityQuat()` and ordinary Go methods/operators already supply the useful behavior. |
+
+### Intentionally omitted C# convenience API
+
+| Pinned upstream helper | Reason |
+|---|---|
+| Throwing `Matrix4x4.Inverse()` extension | `Mat4.Inverse() (Mat4, bool)` represents singularity without exceptions. |
+| `Vector3.IsNonZeroAndValid`, `IsZeroOrInvalid` | Thin combinations of `IsFinite` and squared magnitude; no second validity vocabulary is needed. |
+| `Vector3.ToLine`, `Along`, and scalar `AlongX/Y/Z` | Constructor/normalize/scale conveniences are clearer explicitly. Pinned `AlongZ` also incorrectly returns the X axis. |
+| `Quaternion.ToSphericalAngle` overloads, `Create(HorizontalCoordinate)`, and implicit quaternion/horizontal conversions | Specialized coordinate conveniences with a hard-coded default forward axis and silent normalization singularities. Callers can state their chosen forward convention explicitly with `Quat.Rotate` and ordinary trigonometry; implicit conversions are not idiomatic Go. |
+| `ITransformable3D<TSelf>` and generic `Transform` | The C# interface and extension dispatch are intentionally not reproduced; concrete Go values own their transformation methods. |
+| Generic `Translate`, `Rotate`, `Scale`, `ScaleX/Y/Z`, `LookAt`, `RotateAround`, `Reflect`, axis rotations, and `TranslateRotateScale` | Optional `Transformable3D` composition conveniences, not geometry kernels. Existing matrix factories and `Mat4.Mul` express them without a broad interface. Pinned `ScaleX/Y/Z` also zero the unaffected axes and are not copied. |
 
 ### Experimental and placeholder declarations
 
@@ -190,6 +263,15 @@ added when implemented.
 24. Binary, text, and custom JSON encodings remain deferred at milestone 10:
     the repository has no concrete VIM interchange or consumer format
     requirement. Public fields continue to use Go's standard JSON behavior.
+25. `Mat4.TransformNormal` uses the mathematically correct row-vector inverse
+    transpose and reports inversion or finite-value failures. Pinned upstream's
+    `TransformNormal` overloads only apply the ordinary linear transform. Go
+    preserves their no-normalization behavior but not that defect under
+    non-uniform scale or shear.
+26. `NearestPowerOfTwo` reports failure for zero, negative inputs, and a nearest
+    power outside the positive `int32` range. Pinned `ToNearestPowOf2` passes
+    those cases through logarithm, floating-point conversion, and unchecked
+    integer conversion without a useful mathematical result.
 
 ## Release readiness
 
@@ -198,6 +280,10 @@ row-vector matrix composition, bounds construction, and ray intersections. It
 also adds repeatable benchmarks for vector cross products, matrix
 multiplication and inversion, and ray/box intersection. These benchmarks are
 baselines only; no readable implementation was replaced without evidence.
+
+The required remaining-parity rows are complete. Optional data-layout,
+transform-composition, and expanded double-precision work remains deferred
+until requested by a concrete consumer.
 
 ## Source behavior notes
 

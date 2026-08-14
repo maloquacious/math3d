@@ -193,6 +193,25 @@ func (m Mat4) TransformDirection(v Vec3) Vec3 {
 	return V3(r.X, r.Y, r.Z)
 }
 
+// TransformNormal transforms a surface normal using the inverse transpose of
+// m, as required by the row-vector convention. Translation has no effect, and
+// the result is not normalized. It fails for a non-finite normal, a singular or
+// non-finite matrix, or a non-finite result.
+func (m Mat4) TransformNormal(normal Vec3) (Vec3, bool) {
+	if !normal.IsFinite() {
+		return Vec3{}, false
+	}
+	inverse, ok := m.Inverse()
+	if !ok {
+		return Vec3{}, false
+	}
+	result := inverse.Transposed().TransformDirection(normal)
+	if !result.IsFinite() {
+		return Vec3{}, false
+	}
+	return result, true
+}
+
 func TranslationMat4(v Vec3) Mat4 { return IdentityMat4().WithTranslation(v) }
 
 func ScaleMat4(v Vec3) Mat4 {

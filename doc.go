@@ -7,9 +7,10 @@
 // not prescribe a world-up axis.
 //
 // Matrices use row-vector semantics. A point is transformed as
-// [x y z 1] * M, while a direction or normal is transformed as
-// [x y z 0] * M. Translation therefore occupies M41, M42, and M43. In a
-// product A * B, A is applied first and B second.
+// [x y z 1] * M, while a direction uses [x y z 0] * M. Surface normals use
+// the inverse transpose of M's linear transform so they remain perpendicular
+// under non-uniform scale and shear. Translation occupies M41, M42, and M43.
+// In a product A * B, A is applied first and B second.
 //
 // Rotation APIs accept radians unless their documentation explicitly says
 // otherwise. Positive rotations follow the right-hand rule. Coordinate record
