@@ -91,6 +91,11 @@ executable [`ExampleTransform`](example_test.go).
 - `DInterval`, `DBox2`, `DBox3`, and `DBox4`
 - Float64 coordinate records and selected scalar records and helpers
 
+## Guides
+
+- [Place and query a 3D object](docs/getting-started.md) — a guided first
+  workflow using a rigid transform, world-space bounds, and a ray query
+
 ## API documentation
 
 The [package documentation on pkg.go.dev](https://pkg.go.dev/github.com/maloquacious/math3d)

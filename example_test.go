@@ -6,6 +6,51 @@ import (
 	"github.com/maloquacious/math3d"
 )
 
+func Example() {
+	localVertices := []math3d.Vec3{
+		math3d.V3(-1, -1, 0),
+		math3d.V3(1, -1, 0),
+		math3d.V3(1, 1, 0),
+		math3d.V3(-1, 1, 0),
+	}
+
+	transform := math3d.NewTransform(
+		math3d.V3(5, 0, 0),
+		math3d.QuatRotationZ(math3d.HalfPi),
+	)
+	worldVertices := make([]math3d.Vec3, len(localVertices))
+	for i, vertex := range localVertices {
+		worldVertices[i] = transform.TransformPoint(vertex)
+	}
+
+	worldBounds, ok := math3d.Box3FromPoints(worldVertices)
+	if !ok {
+		fmt.Println("could not build world bounds")
+		return
+	}
+
+	direction, ok := math3d.V3(2, 0, 0).Normalized()
+	if !ok {
+		fmt.Println("invalid query direction")
+		return
+	}
+	ray := math3d.NewRay(math3d.V3(0, 0, 0), direction)
+	t, ok := ray.IntersectBox(worldBounds)
+	if !ok {
+		fmt.Println("ray missed the object bounds")
+		return
+	}
+	hit := ray.PointAt(t)
+
+	fmt.Printf("bounds: (%.0f, %.0f, %.0f) to (%.0f, %.0f, %.0f)\n",
+		worldBounds.Min.X, worldBounds.Min.Y, worldBounds.Min.Z,
+		worldBounds.Max.X, worldBounds.Max.Y, worldBounds.Max.Z)
+	fmt.Printf("hit: (%.0f, %.0f, %.0f), distance: %.0f\n", hit.X, hit.Y, hit.Z, t)
+	// Output:
+	// bounds: (4, -1, 0) to (6, 1, 0)
+	// hit: (4, 0, 0), distance: 4
+}
+
 func ExampleVec3() {
 	direction, ok := math3d.V3(3, 0, 4).Normalized()
 	if !ok {
